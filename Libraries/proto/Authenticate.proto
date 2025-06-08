@@ -1,0 +1,119 @@
+/*
+    Filename:        /Libraries/proto/Authenticate.proto
+    Description:     Protobuf for Authenticate service.
+
+    Created at:     07.06.2025
+    Updated at:     07.06.2025
+
+    TODO:
+        - None.
+
+    Project:       Kingdom-System.
+    License:       BSD 3-Clause License.
+*/
+
+syntax = "proto3";
+
+package authenticate;
+
+option go_package = "gen/proto/authenticate";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+
+message SignUpRequest {
+    string email = 1;
+    string first_name = 2;
+    optional string middle_name = 3;
+    string last_name = 4;
+    string organization_id = 5;
+    string password_hash = 6;
+    string phone_number = 7;
+}
+
+message RefreshTokenResponseData {
+    string auth_token = 1;
+    string refresh_token = 2;
+    google.protobuf.Timestamp expires_at = 3;
+}
+
+
+message SignUpResponse {
+    oneof response {
+        RefreshTokenResponseData token = 1;
+        string error = 2;
+    }
+}
+
+message SignInRequest {
+    string phone_number = 1;
+    string password_hash = 2;
+}
+
+message SignInResponse {
+    oneof response {
+        RefreshTokenResponseData token = 1;
+        string error = 2;
+    }
+}
+
+message RefreshTokenRequest {
+    string refresh_token = 1;
+}
+
+
+message RefreshTokenResponse {
+    oneof response {
+        RefreshTokenResponseData token = 1;
+        string error = 2;
+    }
+}
+
+message SignOutRequest {
+    string refresh_token = 1;
+}
+
+message OAuth2LoginRequest {
+    string state = 1;
+}
+
+message OAuth2LoginResponse {
+    string auth_url = 1;
+}
+
+
+message OAuth2CallbackRequest {
+    string code = 1;
+}
+
+message OAuth2CallbackResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+    google.protobuf.Timestamp expires_at = 3;
+    UserProfile user_profile = 4;
+}
+
+message UserProfile {
+    string id = 1;
+    string email = 2;
+    string first_name = 3;
+    string last_name = 4;
+    string display_name = 5;
+    string avatar_url = 6;
+}
+
+message GetProfileByTokenRequest {
+    string access_token = 1;
+}
+
+service AuthenticateService {
+    rpc SignUp(SignUpRequest) returns (SignUpResponse);
+    rpc SignIn(SignInRequest) returns (SignInResponse);
+    rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+    rpc SignOut(SignOutRequest) returns (google.protobuf.Empty);
+    rpc OAuth2Login(OAuth2LoginRequest) returns (OAuth2LoginResponse);
+    rpc OAuth2Callback(OAuth2CallbackRequest) returns (OAuth2CallbackResponse);
+    rpc GetMe(google.protobuf.Empty) returns (UserProfile);
+    rpc GetProfileByToken(GetProfileByTokenRequest) returns (UserProfile);
+}

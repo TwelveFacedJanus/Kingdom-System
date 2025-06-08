@@ -3,7 +3,7 @@ services:
     build:
       context: ./redis
     env_file:
-      - ./prod.env  # Using production environment file
+      - ../.env  # Using production environment file
     volumes:
       - redis_data:/data
       - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
@@ -17,29 +17,17 @@ services:
       timeout: 3s
       retries: 3
 
-  auth:
+  mikhail:
     build:
       context: ./Mikhail
     env_file:
-      - ./prod.env  # Using production environment file
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - ENCRYPTION_KEY=${REDIS_ENCRYPTION_KEY}
-      - YANDEX_OAUTH_CLIENT_ID=${YANDEX_OAUTH_CLIENT_ID}
-      - YANDEX_OAUTH_CLIENT_SECRET=${YANDEX_OAUTH_CLIENT_SECRET}
-      - OAUTH_REDIRECTION_URL=${OAUTH_REDIRECTION_URL}
-      - MIKHAIL_PORT=50051
-      - ENVIRONMENT=production  # Changed to production
-      - RATE_LIMIT_REQUESTS=60
-      - RATE_LIMIT_WINDOW=60
+      - ../.env
     ports:
-      - "${MIKHAIL_PORT}:50051"
-    depends_on:
-      redis:
-        condition: service_healthy
+      - "50051:50051"
     networks:
       - auth_network
+    depends_on:
+      - redis
 
 volumes:
   redis_data:
