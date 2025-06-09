@@ -24,10 +24,9 @@ class TokenManager:
                 port=env.redis_port,
                 password=env.redis_password,
                 decode_responses=True,
-                socket_timeout=5,  # 5 seconds timeout
+                socket_timeout=5,
                 socket_connect_timeout=5
             )
-            # Test the connection
             self.redis_client.ping()
             print("Successfully connected to Redis")
         except redis.ConnectionError as e:
@@ -42,17 +41,16 @@ class TokenManager:
 
     def store_tokens(self: Self, user_id: str, access_token: str, refresh_token: str, expires_in: int) -> None:
         """Store tokens in Redis with expiration."""
-        # Store access token
+
         self.redis_client.setex(
             f"{self.token_prefix}{access_token}",
             expires_in,
             user_id
         )
         
-        # Store refresh token with longer expiration (30 days)
         self.redis_client.setex(
             f"{self.refresh_token_prefix}{refresh_token}",
-            30 * 24 * 60 * 60,  # 30 days in seconds
+            30 * 24 * 60 * 60,
             user_id
         )
 
@@ -79,11 +77,9 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
     def OAuth2Login(self, request: auth_proto.OAuth2LoginRequest, context: grpc.ServicerContext) -> auth_proto.OAuth2LoginResponse:
         """Generate OAuth2.0 login URL for Yandex authentication."""
         print('New OAuth2Login request.')
-        
-        # Generate state parameter for security
+
         state = request.state if request.state else str(uuid.uuid4())
-        
-        # Construct authorization URL
+
         auth_url = (
             f"{YANDEX_OAUTH_CONFIG['authorize_url']}"
             f"?response_type=code"
@@ -100,7 +96,6 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
         print('New OAuth2Callback request.')
         
         try:
-            # Exchange authorization code for access token
             token_response = requests.post(
                 YANDEX_OAUTH_CONFIG['token_url'],
                 data={
@@ -120,23 +115,20 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
             access_token = token_data['access_token']
             refresh_token = token_data.get('refresh_token', '')
             expires_in = token_data.get('expires_in', 3600)
-            
-            # Get user profile information
+
             user_response = requests.get(
                 YANDEX_OAUTH_CONFIG['userinfo_url'],
                 headers={'Authorization': f'OAuth {access_token}'}
             )
             user_data = user_response.json()
-            
-            # Store tokens in Redis
+
             self.token_manager.store_tokens(
                 user_id=user_data['id'],
                 access_token=access_token,
                 refresh_token=refresh_token,
                 expires_in=expires_in
             )
-            
-            # Create user profile
+
             user_profile = auth_proto.UserProfile(
                 id=user_data['id'],
                 email=user_data.get('default_email', ''),
@@ -145,8 +137,7 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
                 display_name=user_data.get('display_name', ''),
                 avatar_url=user_data.get('default_avatar_id', '')
             )
-            
-            # Create expiration timestamp
+
             expires_at = Timestamp()
             expires_at.FromDatetime(
                 datetime.utcnow() + timedelta(seconds=expires_in)
@@ -169,7 +160,6 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
         print('New RefreshToken request.')
         
         try:
-            # Validate refresh token
             user_id = self.token_manager.validate_refresh_token(request.refresh_token)
             if not user_id:
                 context.set_code(grpc.StatusCode.UNAUTHENTICATED)
@@ -178,7 +168,6 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
                     error="Invalid or expired refresh token"
                 )
 
-            # Exchange refresh token for new access token
             token_response = requests.post(
                 YANDEX_OAUTH_CONFIG['token_url'],
                 data={
@@ -200,22 +189,19 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
             access_token = token_data['access_token']
             refresh_token = token_data.get('refresh_token', request.refresh_token)
             expires_in = token_data.get('expires_in', 3600)
-            
-            # Store new tokens
+
             self.token_manager.store_tokens(
                 user_id=user_id,
                 access_token=access_token,
                 refresh_token=refresh_token,
                 expires_in=expires_in
             )
-            
-            # Create expiration timestamp
+
             expires_at = Timestamp()
             expires_at.FromDatetime(
                 datetime.utcnow() + timedelta(seconds=expires_in)
             )
-            
-            # Create response with new tokens
+ 
             token_data = auth_proto.RefreshTokenResponseData(
                 auth_token=access_token,
                 refresh_token=refresh_token,
@@ -236,14 +222,12 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
         print('New GetProfileByToken request.')
         
         try:
-            # Validate access token
             user_id = self.token_manager.validate_access_token(request.access_token)
             if not user_id:
                 context.set_code(grpc.StatusCode.UNAUTHENTICATED)
                 context.set_details("Invalid or expired access token")
                 return auth_proto.UserProfile()
 
-            # Get user profile information from Yandex
             user_response = requests.get(
                 YANDEX_OAUTH_CONFIG['userinfo_url'],
                 headers={'Authorization': f'OAuth {request.access_token}'}
@@ -255,8 +239,7 @@ class AuthenticateService(auth_grpc.AuthenticateServiceServicer):
                 return auth_proto.UserProfile()
             
             user_data = user_response.json()
-            
-            # Create and return user profile
+
             return auth_proto.UserProfile(
                 id=user_data['id'],
                 email=user_data.get('default_email', ''),

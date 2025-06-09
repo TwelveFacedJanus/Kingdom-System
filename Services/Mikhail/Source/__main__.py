@@ -7,8 +7,6 @@ from concurrent import futures
 
 from proto import Authenticate_pb2_grpc as AuthenticatePackage
 from authenticate_service import *
-env = Environment(_path_to_env='../../../.env')
-
 
 class Server:
     def __init__(self: Self,
@@ -16,11 +14,10 @@ class Server:
                  _host: str = '[::]',
                  _max_workers: int = 10
                  ) -> None:
-        assert type(_port) == int, 'Port must be integer'
-        assert _port > 2000, 'Port cannot be lower that 2000'
-        assert type(_host) == str, 'Host must be string value'
-        assert _host != '', 'Host cannot be nullable'
-        assert type(_max_workers) == int, 'Max workers is string. Are u kidding?'
+
+        assert (type(_port) == int) and (_port > 2000), 'Port must be integer and high 2000.'
+        assert (type(_host) == str) and (_host != ''), 'Host must be string value and not nullable string.'
+        assert (type(_max_workers) == int) and (_max_workers >= 1), 'Max workers is string. Are u kidding?'
 
         self._port: int = _port
         self._host: str = _host
@@ -43,5 +40,8 @@ class Server:
             self._server.stop(None)
             print('Server is stopped')
 
+
+
+env = Environment(_path_to_env='../../../.env')
 s = Server(_port=env.port, _host='[::]', _max_workers=env.mikhail_max_workers)
 s.serve()
